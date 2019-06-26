@@ -16,6 +16,8 @@ import CarsMutation from './CarsMutation'
 import CarsMutationComponent from './CarsMutationComponent'
 import AllCars from './AllCars'
 import QuerySubscription from './QuerySubscription'
+import Counter from './Counter'
+import ReadCounter from './ReadCounter'
 
 const httpLink = new HttpLink({
   uri: `http://localhost:4000/graphql`
@@ -44,8 +46,10 @@ const client = new ApolloClient({
 const App = () => {
   return (
     <ApolloProvider client={client}>
+      <Counter />
+      <ReadCounter />
+      <AllCars />
       <CarsMutationComponent />
-      <QuerySubscription />
     </ApolloProvider>
   )
 }
