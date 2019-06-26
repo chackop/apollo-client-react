@@ -1,35 +1,42 @@
-const { ApolloServer, gql } = require('apollo-server')
+const express = require('express')
+const { createServer } = require('http')
+const { PubSub } = require('apollo-server')
+const { ApolloServer, gql } = require('apollo-server-express')
 
-const cars = [
-  {
-    id: '1',
-    brand: 'Toyota Corolla',
-    color: 'Blue',
-    doors: 4,
-    type: 'Sedan',
-    parts: [{ id: '1' }, { id: '2' }]
-  },
-  {
-    id: '2',
-    brand: 'Toyota Camry',
-    color: 'Red',
-    doors: 4,
-    type: 'SUV',
-    parts: [{ id: '1' }, { id: '3' }]
-  }
-]
-const parts = [
-  {
-    id: '1',
-    name: 'Transmission',
-    cars: [{ id: '1' }, { id: '2' }]
-  },
-  {
-    id: '2',
-    name: 'Suspension',
-    cars: [{ id: '1' }]
-  }
-]
+const pubsub = new PubSub()
+const db = {
+  cars: [
+    {
+      id: '1',
+      brand: 'Ford',
+      color: 'Blue',
+      doors: 4,
+      type: 'Sedan',
+      parts: [{ id: '1' }, { id: '2' }]
+    },
+    {
+      id: '2',
+      brand: 'Tesla',
+      color: 'Red',
+      doors: 4,
+      type: 'SUV',
+      parts: [{ id: '1' }, { id: '3' }]
+    }
+  ],
+  parts: [
+    {
+      id: '1',
+      name: 'Transmission',
+      cars: [{ id: '1' }, { id: '2' }]
+    },
+    {
+      id: '2',
+      name: 'Susspension',
+      cars: [{ id: '1' }]
+    }
+  ]
+}
+
 const schema = gql(` 
 enum CarTypes {
   Sedan
@@ -37,78 +44,39 @@ enum CarTypes {
   Coupe
 }
 type Car {
-  id: ID!
-  brand: String!
-  color: String!
-  doors: Int!
-  type: CarTypes!
-  parts:[Part]
-}
-type Part {
-   id: ID!
-   name: String
-   cars: [Car]
-}
+    id: ID!
+    brand: String!
+    color: String!
+    doors: Int!
+    type: CarTypes!
+ }
+ type Query {
+   carsByType(type:CarTypes!): [Car]
+   carsById(id:ID!): Car
+   allCars:[Car]
+ }
+ type Mutation {
+   insertCar(brand: String!, color: String!, doors: Int!, type:CarTypes!): Car
+ }
+  type Subscription {
+    carInserted: Car
+  }
 
-type Cars {
-  cars:[Car]
-}
-
-type Query {
-  carsById(id:ID!): Car
-  carsByType(type:CarTypes!): Cars
-  partsById(id:ID!): Part
-  allCars:[Car]
-
-}
-type Mutation {
-  insertCar(brand: String!, color: String!, doors: Int!, type:CarTypes!): Car
-}
 `)
 
 // create the resolvers
 const resolvers = {
   Query: {
-    carsById: (parent, args, context, info) => args,
-    carsByType: (parent, args, context, info) => args,
-    partsById: (parent, args, context, info) => args,
-    allCars: (parent, args, context, info) => cars
-  },
-  Part: {
-    name: (parent, args, context, info) => {
-      if (parts.filter(part => part.id === parent.id)[0]) {
-        return parts.filter(part => part.id === parent.id)[0].name
-      }
-      return null
+    carsByType: (parent, args, context, info) => {
+      return db.cars.filter(car => car.type === args.type)
     },
-    cars: (parent, args, context, info) => {
-      return parts.filter(part => part.partId === parent.partId)[0].cars
-    }
-  },
-  Car: {
-    brand: (parent, args, context, info) => {
-      return cars.filter(car => car.id === parent.id)[0].brand
+    carsById: (parent, args, context, info) => {
+      return db.cars.filter(car => car.id === args.id)[0]
     },
-    type: (parent, args, context, info) => {
-      return cars.filter(car => car.id === parent.id)[0].type
-    },
-    color: (parent, args, context, info) => {
-      return cars.filter(car => car.id === parent.id)[0].color
-    },
-    doors: (parent, args, context, info) => {
-      return cars.filter(car => car.id === parent.id)[0].doors
-    },
-    parts: (parent, args, context, info) => {
-      return cars.filter(car => car.id === parent.id)[0].parts
-    }
-  },
-  Cars: {
-    cars: (parent, args, context, info) => {
-      return cars.filter(car => car.type === parent.type)
-    }
+    allCars: (parent, args, context, info) => db.cars
   },
   Mutation: {
-    insertCar: (_, { brand, color, doors, type }) => {
+    insertCar: (parent, { brand, color, doors, type }) => {
       const id = Math.random().toString()
       const car = {
         id: id,
@@ -117,17 +85,31 @@ const resolvers = {
         doors: doors,
         type: type
       }
-      cars.push(car)
+      db.cars.push(car)
+      pubsub.publish('CAR_INSERTED', {
+        carInserted: car
+      })
       return car
+    }
+  },
+  Subscription: {
+    carInserted: {
+      subscribe: () => pubsub.asyncIterator(['CAR_INSERTED'])
     }
   }
 }
 
+const app = express()
 const server = new ApolloServer({
   typeDefs: schema,
   resolvers
 })
+server.applyMiddleware({ app, path: '/graphql' })
 
-server.listen().then(({ url }) => {
-  console.log(`🚀  Server ready at ${url}`)
+const httpServer = createServer(app)
+
+server.installSubscriptionHandlers(httpServer)
+
+httpServer.listen({ port: 4000 }, () => {
+  console.log('Apollo Server listens on 4000')
 })
