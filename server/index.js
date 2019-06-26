@@ -3,7 +3,7 @@ const { ApolloServer, gql } = require('apollo-server')
 const cars = [
   {
     id: '1',
-    brand: 'Toyota Corola',
+    brand: 'Toyota Corolla',
     color: 'Blue',
     doors: 4,
     type: 'Sedan',
@@ -58,9 +58,11 @@ type Query {
   carsById(id:ID!): Car
   carsByType(type:CarTypes!): Cars
   partsById(id:ID!): Part
+  allCars:[Car]
+
 }
 type Mutation {
-  insertCar(brand: String!, color: String!, doors: Int!, type:CarTypes!): [Car]!
+  insertCar(brand: String!, color: String!, doors: Int!, type:CarTypes!): Car
 }
 `)
 
@@ -69,7 +71,8 @@ const resolvers = {
   Query: {
     carsById: (parent, args, context, info) => args,
     carsByType: (parent, args, context, info) => args,
-    partsById: (parent, args, context, info) => args
+    partsById: (parent, args, context, info) => args,
+    allCars: (parent, args, context, info) => cars
   },
   Part: {
     name: (parent, args, context, info) => {
@@ -103,6 +106,20 @@ const resolvers = {
     cars: (parent, args, context, info) => {
       return cars.filter(car => car.type === parent.type)
     }
+  },
+  Mutation: {
+    insertCar: (_, { brand, color, doors, type }) => {
+      const id = Math.random().toString()
+      const car = {
+        id: id,
+        brand: brand,
+        color: color,
+        doors: doors,
+        type: type
+      }
+      cars.push(car)
+      return car
+    }
   }
 }
 
@@ -114,43 +131,3 @@ const server = new ApolloServer({
 server.listen().then(({ url }) => {
   console.log(`🚀  Server ready at ${url}`)
 })
-
-/**
- *
-
-{
-  carsByType(type:SUV){
-    cars{
-      color
-      brand
-      parts{
-        id
-        name
-      }
-    }
-  }
-}
- */
-
-/**
-  *
-  * {
-  carsById(id: "1") {
-    brand
-    parts {
-      name
-      id
-     }
-    }
-  }
-
-  {
-  partsById(id: "1") {
-    name
-    cars {
-      brand
-    }
-  }
-}
-
- */

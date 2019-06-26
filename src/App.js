@@ -1,12 +1,14 @@
 import React from 'react'
 import ApolloClient from 'apollo-boost'
 import { ApolloProvider } from 'react-apollo'
-import Cars from './Cars'
-import CarsTwo from './CarsTwo'
-import CarsQuery from './CarsQuery'
-import CarsRefetch from './CarsRefetch'
-import CarsMutation from './CarsMutation'
+// import Cars from './Cars'
+// import CarsTwo from './CarsTwo'
+// import CarsQuery from './CarsQuery'
+// import CarsRefetch from './CarsRefetch'
+// import CarsMutation from './CarsMutation'
 import CarsMutationComponent from './CarsMutationComponent'
+import AllCars from './AllCars'
+
 const client = new ApolloClient({
   uri: 'http://localhost:4000'
 })
@@ -14,12 +16,8 @@ const client = new ApolloClient({
 const App = () => {
   return (
     <ApolloProvider client={client}>
-      <Cars />
-      <CarsTwo />
-      <CarsQuery />
-      <CarsRefetch />
-      <CarsMutation />
       <CarsMutationComponent />
+      <AllCars />
     </ApolloProvider>
   )
 }
